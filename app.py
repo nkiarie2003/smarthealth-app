@@ -1,11 +1,25 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 # setting up the flask app
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///smarthealth.db'  # database setup
+
+# use Azure persistent path in cloud, local instance folder on your machine
+if os.environ.get("WEBSITE_HOSTNAME"):
+    db_path = "/home/site/wwwroot/instance/smarthealth.db"
+else:
+    db_path = os.path.join(app.instance_path, "smarthealth.db")
+
+os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"  # database setup
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", "dev-secret-key")
+
 db = SQLAlchemy(app)  # database link
+
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     firstname = db.Column(db.String(100), nullable=False)
@@ -15,8 +29,6 @@ class User(db.Model):
     email = db.Column(db.String(100), nullable=False, unique=True)
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(50), nullable=False)
-
-
 
 
 class Doctor(db.Model):
@@ -53,15 +65,17 @@ def home():
 def login():
     return render_template("login.html")
 
+
 @app.route("/doctor_login")
 def doctor_login():
     # no password for now just direct route to admin
     return redirect(url_for("admin"))
 
+
 @app.route("/admin")
 def admin():
-    doctors = Doctor.query.all()  
-    appointments = Appointment.query.all()  
+    doctors = Doctor.query.all()
+    appointments = Appointment.query.all()
     return render_template("admin.html", doctors=doctors, appointments=appointments)
 
 
@@ -77,6 +91,7 @@ def search():
     else:
         doctors = Doctor.query.all()
     return render_template("search.html", doctors=doctors, query=query)
+
 
 # this is the booking route (for patient)
 @app.route("/book/<int:doctor_id>", methods=["GET", "POST"])
@@ -122,30 +137,33 @@ def appointment_confirmed(doctor_id):
     return render_template("appointment_confirmed.html", doctor=doctor)
 
 
+def seed_doctors():
+    # only adds demo data once (so it doesn't repeat)
+    if not Doctor.query.first():
+        doctors = [
+            Doctor(name="Dr. John Smith", specialty="Cardiology", location="Sheffield",
+                   image="img/doctor1.jpg", description="Expert in cardiovascular health and patient care."),
+            Doctor(name="Dr. Emma Lee", specialty="Dermatology", location="Leeds",
+                   image="img/doctor2.jpg", description="Specialist in skincare, acne treatment, and laser therapy."),
+            Doctor(name="Dr. James Patel", specialty="Orthopedic Surgery", location="Birmingham",
+                   image="img/doctor3.jpg", description="Experienced orthopedic surgeon focusing on joint and spine health."),
+            Doctor(name="Dr. Olivia Wright", specialty="Neurology", location="Nottingham",
+                   image="img/doctor4.jpg", description="Neurology expert specializing in migraines and cognitive disorders."),
+            Doctor(name="Dr. Noah Khan", specialty="Pediatrics", location="Manchester",
+                   image="img/doctor5.jpg", description="Pediatrician dedicated to child development and family care."),
+            Doctor(name="Dr. Sarah Benali", specialty="Psychiatry", location="London",
+                   image="img/doctor6.jpg", description="Compassionate psychiatrist supporting mental wellness.")
+        ]
+        db.session.add_all(doctors)
+        db.session.commit()  # save demo doctors
+        # just to make sure there’s data for the search page
+
+
+with app.app_context():
+    db.create_all()  # makes db if not exists
+    seed_doctors()
+
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()  # makes db if not exists
-
-        # only adds demo data once (so it doesn't repeat)
-        if not Doctor.query.first():
-            doctors = [
-                Doctor(name="Dr. John Smith", specialty="Cardiology", location="Sheffield",
-                       image="img/doctor1.jpg", description="Expert in cardiovascular health and patient care."),
-                Doctor(name="Dr. Emma Lee", specialty="Dermatology", location="Leeds",
-                       image="img/doctor2.jpg", description="Specialist in skincare, acne treatment, and laser therapy."),
-                Doctor(name="Dr. James Patel", specialty="Orthopedic Surgery", location="Birmingham",
-                       image="img/doctor3.jpg", description="Experienced orthopedic surgeon focusing on joint and spine health."),
-                Doctor(name="Dr. Olivia Wright", specialty="Neurology", location="Nottingham",
-                       image="img/doctor4.jpg", description="Neurology expert specializing in migraines and cognitive disorders."),
-                Doctor(name="Dr. Noah Khan", specialty="Pediatrics", location="Manchester",
-                       image="img/doctor5.jpg", description="Pediatrician dedicated to child development and family care."),
-                Doctor(name="Dr. Sarah Benali", specialty="Psychiatry", location="London",
-                       image="img/doctor6.jpg", description="Compassionate psychiatrist supporting mental wellness.")
-            ]
-            db.session.add_all(doctors)
-            db.session.commit()  # save demo doctors
-            # just to make sure there’s data for the search page
-
     # running on debug so can see errors
     app.run(debug=True)
