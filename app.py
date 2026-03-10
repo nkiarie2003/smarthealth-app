@@ -137,33 +137,8 @@ def appointment_confirmed(doctor_id):
     return render_template("appointment_confirmed.html", doctor=doctor)
 
 
-def seed_doctors():
-    # only adds demo data once (so it doesn't repeat)
-    if not Doctor.query.first():
-        doctors = [
-            Doctor(name="Dr. John Smith", specialty="Cardiology", location="Sheffield",
-                   image="img/doctor1.jpg", description="Expert in cardiovascular health and patient care."),
-            Doctor(name="Dr. Emma Lee", specialty="Dermatology", location="Leeds",
-                   image="img/doctor2.jpg", description="Specialist in skincare, acne treatment, and laser therapy."),
-            Doctor(name="Dr. James Patel", specialty="Orthopedic Surgery", location="Birmingham",
-                   image="img/doctor3.jpg", description="Experienced orthopedic surgeon focusing on joint and spine health."),
-            Doctor(name="Dr. Olivia Wright", specialty="Neurology", location="Nottingham",
-                   image="img/doctor4.jpg", description="Neurology expert specializing in migraines and cognitive disorders."),
-            Doctor(name="Dr. Noah Khan", specialty="Pediatrics", location="Manchester",
-                   image="img/doctor5.jpg", description="Pediatrician dedicated to child development and family care."),
-            Doctor(name="Dr. Sarah Benali", specialty="Psychiatry", location="London",
-                   image="img/doctor6.jpg", description="Compassionate psychiatrist supporting mental wellness.")
-        ]
-        db.session.add_all(doctors)
-        db.session.commit()  # save demo doctors
-        # just to make sure there’s data for the search page
-
-
-with app.app_context():
-    db.create_all()  # makes db if not exists
-    seed_doctors()
-
-
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()  # makes db if not exists
     # running on debug so can see errors
     app.run(debug=True)
